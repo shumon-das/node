@@ -8,7 +8,8 @@
 const url = require('url');
 const { StringDecoder } = require('string_decoder');
 const routes = require('../routes');
-const { notFoundHandler } = require('../handlers/routeHandlers/notFoundHandler')
+const { notFoundHandler } = require('../handlers/routeHandlers/notFoundHandler');
+const {parseJSON} = require('../appHelpers/utilities');
 
 
 // module scaffolding
@@ -20,7 +21,7 @@ handler.handleRequestResponse = (req, res) => {
     const parseUrl = url.parse(req.url, true);
     const path = parseUrl.pathname;
     const trimmedPath = path.replace(/^\/+|\/+$/g,'');
-    const pathMethod = req.method.toLowerCase();
+    const method = req.method.toLowerCase();
     const queryStringObject = parseUrl.query;
     const headers = req.headers;
 
@@ -31,7 +32,7 @@ handler.handleRequestResponse = (req, res) => {
         parseUrl,
         path,
         trimmedPath,
-        pathMethod,
+        method,
         queryStringObject,
         headers
     };
@@ -46,6 +47,7 @@ handler.handleRequestResponse = (req, res) => {
     req.on('end', () => {
         data += decoder.end();
         
+        requestProperties.body = parseJSON(data);
         chosenHandler(requestProperties, (statusCode, payload) => {
             statusCode = typeof statusCode === 'number' ? statusCode : 500;
             payload = typeof payload === 'object' ? payload : {};
@@ -53,6 +55,7 @@ handler.handleRequestResponse = (req, res) => {
             const payloadString = JSON.stringify(payload);
     
             // return final response
+            res.setHeader('Content-Type','application/json');
             res.writeHead(statusCode);
             res.end(payloadString);
         });
@@ -69,8 +72,6 @@ handler.handleRequestResponse = (req, res) => {
             res.end('Hello world');
         });
 
-        // response
-        res.end("Hello Developers");
     });
 
 }
