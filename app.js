@@ -13,7 +13,7 @@ const data = require('./lib/data');
 // application object
 const app = {};
 
-// call create file function
+// call create new file function
 // data.create('Test', 'newFile',{name: "PHP", projectName: "single node project HaH!"}, (err) => { 
 //     console.log("the error is ", err);
 //  });
@@ -24,14 +24,14 @@ const app = {};
 //  });
 
 
-// call file update function
+// call user update function
 // data.update('Test', 'newFile',{name: "Node", projectName: "single node project now Edited"}, (err) => { 
 //     console.log("the error is ", err);
 
 //     // err ? console.log(err) : console.log(data)
 //  });
 
-// call delete file function
+// call user delete function
 // data.delete('Test', 'newFile', (err) => {
 //     console.log(err);
 // });

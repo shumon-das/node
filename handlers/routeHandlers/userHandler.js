@@ -47,7 +47,7 @@ handler._users.post = (requestProperties, callback) => {
                           : false;  
 
     const phoneNumber = typeof(requestProperties.body.phoneNumber) === 'string' &&
-                          requestProperties.body.phoneNumber.trim().length === 12 
+                          requestProperties.body.phoneNumber.trim().length === 11 
                           ? requestProperties.body.phoneNumber 
                           : false; 
 
@@ -79,7 +79,7 @@ handler._users.post = (requestProperties, callback) => {
                     reqeustData.create('users', userName, userObject, (saveError) => {
                         if(!saveError){
                             callback(200,{
-                                'message': 'Welcome, created a new user successfully'
+                                'message': `Welcome, created ${userName} user successfully`
                             });
                         }else{
                             callback(500,{
@@ -127,10 +127,115 @@ handler._users.get = (requestProperties, callback) => {
 
 handler._users.put = (requestProperties, callback) => {
         
+        const firstName = typeof(requestProperties.body.firstName) === 'string' &&
+                          requestProperties.body.firstName.trim().length > 0
+                          ? requestProperties.body.firstName 
+                          : false;
+ 
+        const lastName = typeof(requestProperties.body.lastName) === 'string' &&
+                          requestProperties.body.lastName.trim().length > 0
+                          ? requestProperties.body.lastName 
+                          : false; 
+                          
+        const userName = typeof(requestProperties.body.userName) === 'string' &&
+                          requestProperties.body.userName.trim().length > 0 
+                          ? requestProperties.body.userName 
+                          : false;  
+
+        const phoneNumber = typeof(requestProperties.body.phoneNumber) === 'string' &&
+                            requestProperties.body.phoneNumber.trim().length === 12 
+                            ? requestProperties.body.phoneNumber 
+                            : false; 
+
+        const password = typeof(requestProperties.body.password) === 'string' &&
+                          requestProperties.body.password.trim().length > 0 
+                          ? requestProperties.body.password 
+                          : false; 
+                          
+         if(userName){
+
+            if(firstName || lastName || phoneNumber || password){
+                // get data from database
+                reqeustData.read('users', userName, (userError, uData) => {
+                    const userData = { ...parseJSON(uData) }
+                    if(!userError){
+                        if(firstName){
+                            userData.firstName = firstName;
+                        }                        
+                        if(lastName){
+                            userData.lastName = lastName;
+                        }
+                        if(phoneNumber){
+                            userData.phoneNumber = phoneNumber;
+                        }
+                        if(password){
+                            userData.password = hash(password);
+                        }
+                        // save data into database
+                        reqeustData.update('users', userName, userData, (putError) => {
+                            if(!putError){
+                                callback(200, {
+                                    'message': userName+' updated successfully'
+                                })
+                            }else{
+                                callback(500, {
+                                    'error': 'internal server error'
+                                })
+                            }
+                        })
+
+                    }else{
+                        callback(400, {
+                            'error':'sorry, something went wrong when try to get user data \n' + userError
+                        })
+                    }
+                })
+            }else{
+                callback(400, {
+                    'error':'sorry, something went wrong, please check your inputs, at least one field have to field'
+                })
+            }
+
+         }else{
+             callback(400, {
+                 'error': 'invalid Credential'
+             })
+         }   
+   
 }
 
 handler._users.delete = (requestProperties, callback) => {
-        
+    const username = typeof(requestProperties.queryStringObject.username) === 'string' &&
+                     requestProperties.queryStringObject.username.trim().length > 0 
+                     ? requestProperties.queryStringObject.username 
+                     : false;
+
+    console.log(username);
+    if(username){
+        reqeustData.read('users', username, (dbError, userData) => {
+            if(!dbError && userData){
+                reqeustData.delete('users', username, (deleteError) => {
+                    if(!deleteError){
+                        callback(200, {
+                            'message': 'User deleted successfully'
+                        })
+                    }else{
+                        callback(500, {
+                            'error': `cannot delete ${username} user \n` + deleteError
+                        })
+                    }
+                })
+            }else{
+                callback(500, {
+                    'error': 'user not found'
+                })
+            }
+        })
+    }else{
+        callback(400, {
+            'error': 'something went wrong'
+        })
+    }
 }
 
 
