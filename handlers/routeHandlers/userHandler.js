@@ -8,6 +8,7 @@
 
 const reqeustData = require('../../lib/data'); 
 const {hash, parseJSON} = require('../../appHelpers/utilities');
+const tokenHandler = require('./tokenHandler');
 
 // module scaffolding
 const handler = {};
@@ -60,7 +61,7 @@ handler._users.post = (requestProperties, callback) => {
                                requestProperties.body.termsCondition
                                ? requestProperties.body.termsCondition 
                                : false;     
-   
+   console.log(firstName+lastName+userName+phoneNumber+password+termsCondition)
     if(firstName && lastName && userName && phoneNumber && password && termsCondition){
         // check requested user already exists or not
             reqeustData.read('users', userName, (existError) => {
@@ -102,22 +103,35 @@ handler._users.post = (requestProperties, callback) => {
 
 handler._users.get = (requestProperties, callback) => {
     // check the user valid or not
-    const userName = typeof(requestProperties.queryStringObject.username) === 'string' &&
+    const username = typeof(requestProperties.queryStringObject.username) === 'string' &&
                      requestProperties.queryStringObject.username 
                      ? requestProperties.queryStringObject.username 
                      : false; 
-    if(userName){
-        reqeustData.read('users', userName, (getUserError, u) => {
-            const user = { ...parseJSON(u) };
-            if(!getUserError && user){
-                delete user.password;
-                callback(200, user)
+    if(username){
+        
+        let token = typeof(requestProperties.headers.token) === 'string'
+                    ? requestProperties.headers.token
+                    : false;
+        tokenHandler._token.verify(token, username, (tokenId) => {
+            if(tokenId){
+                reqeustData.read('users', username, (getUserError, u) => {
+                    const user = { ...parseJSON(u) };
+                    if(!getUserError && user){
+                        delete user.password;
+                        callback(200, user)
+                    }else{
+                        callback(404,{
+                            'error':'Requested user was not found'
+                        });
+                    }
+                })
             }else{
-                callback(404,{
-                    'error':'Requested user was not found'
-                });
+                callback(403, {
+                    'error': 'Authentication failed'
+                })
             }
         })
+
     }else{
         callback(404,{
             'error':'Requested user was not found'
@@ -137,9 +151,9 @@ handler._users.put = (requestProperties, callback) => {
                           ? requestProperties.body.lastName 
                           : false; 
                           
-        const userName = typeof(requestProperties.body.userName) === 'string' &&
-                          requestProperties.body.userName.trim().length > 0 
-                          ? requestProperties.body.userName 
+        const username = typeof(requestProperties.body.username) === 'string' &&
+                          requestProperties.body.username.trim().length > 0 
+                          ? requestProperties.body.username 
                           : false;  
 
         const phoneNumber = typeof(requestProperties.body.phoneNumber) === 'string' &&
@@ -152,44 +166,57 @@ handler._users.put = (requestProperties, callback) => {
                           ? requestProperties.body.password 
                           : false; 
                           
-         if(userName){
+         if(username){
 
             if(firstName || lastName || phoneNumber || password){
-                // get data from database
-                reqeustData.read('users', userName, (userError, uData) => {
-                    const userData = { ...parseJSON(uData) }
-                    if(!userError){
-                        if(firstName){
-                            userData.firstName = firstName;
-                        }                        
-                        if(lastName){
-                            userData.lastName = lastName;
-                        }
-                        if(phoneNumber){
-                            userData.phoneNumber = phoneNumber;
-                        }
-                        if(password){
-                            userData.password = hash(password);
-                        }
-                        // save data into database
-                        reqeustData.update('users', userName, userData, (putError) => {
-                            if(!putError){
-                                callback(200, {
-                                    'message': userName+' updated successfully'
+                        
+                let token = typeof(requestProperties.headers.token) === 'string'
+                            ? requestProperties.headers.token
+                            : false;
+                tokenHandler._token.verify(token, username, (tokenId) => {
+                    if(tokenId){
+                        // get data from database
+                        reqeustData.read('users', username, (userError, uData) => {
+                            const userData = { ...parseJSON(uData) }
+                            if(!userError){
+                                if(firstName){
+                                    userData.firstName = firstName;
+                                }                        
+                                if(lastName){
+                                    userData.lastName = lastName;
+                                }
+                                if(phoneNumber){
+                                    userData.phoneNumber = phoneNumber;
+                                }
+                                if(password){
+                                    userData.password = hash(password);
+                                }
+                                // save data into database
+                                reqeustData.update('users', username, userData, (putError) => {
+                                    if(!putError){
+                                        callback(200, {
+                                            'message': username+' updated successfully'
+                                        })
+                                    }else{
+                                        callback(500, {
+                                            'error': 'internal server error'
+                                        })
+                                    }
                                 })
+
                             }else{
-                                callback(500, {
-                                    'error': 'internal server error'
+                                callback(400, {
+                                    'error':'sorry, something went wrong when try to get user data \n' + userError
                                 })
                             }
                         })
-
                     }else{
-                        callback(400, {
-                            'error':'sorry, something went wrong when try to get user data \n' + userError
+                        callback(403, {
+                            'error': 'Authentication failed'
                         })
                     }
                 })
+
             }else{
                 callback(400, {
                     'error':'sorry, something went wrong, please check your inputs, at least one field have to field'
@@ -210,24 +237,34 @@ handler._users.delete = (requestProperties, callback) => {
                      ? requestProperties.queryStringObject.username 
                      : false;
 
-    console.log(username);
     if(username){
-        reqeustData.read('users', username, (dbError, userData) => {
-            if(!dbError && userData){
-                reqeustData.delete('users', username, (deleteError) => {
-                    if(!deleteError){
-                        callback(200, {
-                            'message': 'User deleted successfully'
+        let token = typeof(requestProperties.headers.token) === 'string'
+                    ? requestProperties.headers.token
+                    : false;
+        tokenHandler._token.verify(token, username, (tokenId) => {
+            if(tokenId){
+                reqeustData.read('users', username, (dbError, userData) => {
+                    if(!dbError && userData){
+                        reqeustData.delete('users', username, (deleteError) => {
+                            if(!deleteError){
+                                callback(200, {
+                                    'message': 'User deleted successfully'
+                                })
+                            }else{
+                                callback(500, {
+                                    'error': `cannot delete ${username} user \n` + deleteError
+                                })
+                            }
                         })
                     }else{
                         callback(500, {
-                            'error': `cannot delete ${username} user \n` + deleteError
+                            'error': 'user not found'
                         })
                     }
                 })
             }else{
-                callback(500, {
-                    'error': 'user not found'
+                callback(403, {
+                    'error': 'Authentication failed'
                 })
             }
         })
