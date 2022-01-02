@@ -13,13 +13,15 @@ const env = {};
 env.staging = {
     port: 3000,
     envName: 'staging',
-    secretKey: 'kjlkjlkjlk'
+    secretKey: 'kjlkjlkjlk',
+    maxChecks: 5
 };
 
 env.production = {
     port: 5000,
     envName: 'production',
-    secretKey: 'dfgdfhlkfd'
+    secretKey: 'dfgdfhlkfd',
+    maxChecks: 5
 }
 
 // datermine env
